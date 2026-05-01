@@ -655,20 +655,24 @@ function parseCSV(text) {
 
 // ─── Sheet fetching ───────────────────────────────────────────────────────────
 async function fetchSheetTab(sheetId, tabName) {
-  const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}`;
-  let res;
-  try {
-    res = await fetch(url);
-  } catch (networkErr) {
-    throw new Error(`Network error fetching ${tabName}: ${networkErr.message}`);
+  // Try gviz endpoint first, fall back to export endpoint
+  const urls = [
+    `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}`,
+    `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&sheet=${encodeURIComponent(tabName)}`
+  ];
+  let lastError;
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) continue;
+      const text = await res.text();
+      if (text.trim().startsWith('<')) continue;
+      return parseCSV(text);
+    } catch (e) {
+      lastError = e;
+    }
   }
-  if (!res.ok) throw new Error(`HTTP ${res.status} fetching tab: ${tabName}`);
-  const text = await res.text();
-  // gviz returns an HTML page (not CSV) when the sheet isn't published or ID is wrong
-  if (text.trim().startsWith('<')) {
-    throw new Error(`Tab "${tabName}" returned HTML — check that the sheet is published as CSV and the Sheet ID is correct`);
-  }
-  return parseCSV(text);
+  throw new Error(`Could not load tab "${tabName}" — make sure the sheet is published to web as CSV (File → Share → Publish to web)`);
 }
 
 async function loadFromSheet() {
