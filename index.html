@@ -655,21 +655,21 @@ function parseCSV(text) {
 
 // ─── Sheet fetching ───────────────────────────────────────────────────────────
 async function fetchSheetTab(sheetId, tabName) {
-  // Try gviz endpoint first, fall back to export endpoint
+  const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}`;
+  // Try direct first, then via CORS proxy
   const urls = [
-    `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}`,
-    `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&sheet=${encodeURIComponent(tabName)}`
+    sheetUrl,
+    `https://corsproxy.io/?${encodeURIComponent(sheetUrl)}`
   ];
-  let lastError;
   for (const url of urls) {
     try {
-      const res = await fetch(url, { mode: 'cors' });
+      const res = await fetch(url);
       if (!res.ok) continue;
       const text = await res.text();
       if (text.trim().startsWith('<')) continue;
       return parseCSV(text);
     } catch (e) {
-      lastError = e;
+      // try next
     }
   }
   throw new Error(`Could not load tab "${tabName}" — make sure the sheet is published to web as CSV (File → Share → Publish to web)`);
