@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokemon Board Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0f1e;
+  --bg2: #111827;
+  --bg3: #1a2235;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.15);
+  --text: #e8edf8;
+  --text2: #8a9bb8;
+  --text3: #4a5a78;
+  --accent: #ffcb05;
+  --accent2: #3b4cca;
+  --red: #cc0000;
+  --green: #2ecc71;
+  --teal: #1abc9c;
+  --purple: #9b59b6;
+  --orange: #e67e22;
+  --pink: #e91e8c;
+
+  --sq-normal: #131f35;
+  --sq-center: #1a1040;
+  --sq-gym: #0d2040;
+  --sq-elite: #2d0820;
+  --sq-prize: #2d1f00;
+  --sq-bonus-jump: #0a2010;
+  --sq-penalty-jump: #2d0808;
+  --sq-bonus-small: #0a1f2a;
+  --sq-penalty-small: #2a100a;
+  --sq-flavor: #1a1030;
+  --sq-start: #003322;
+  --sq-finish: #2d0028;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Pixel grid background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(59,76,202,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,76,202,0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#app { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 1rem 1rem 3rem; }
+
+/* Header */
+.header {
+  text-align: center;
+  padding: 1.5rem 0 1rem;
+  margin-bottom: 1rem;
+}
+.header h1 {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(10px, 2vw, 18px);
+  color: var(--accent);
+  text-shadow: 0 0 20px rgba(255,203,5,0.4), 3px 3px 0 var(--accent2);
+  letter-spacing: 2px;
+  line-height: 1.6;
+}
+.header p { font-size: 13px; color: var(--text2); margin-top: 6px; }
+
+/* Config banner */
+.config-banner {
+  background: var(--bg2);
+  border: 0.5px solid var(--border2);
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text2);
+}
+.config-banner input[type=text] {
+  flex: 1;
+  min-width: 200px;
+  background: var(--bg3);
+  border: 0.5px solid var(--border2);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+}
+.config-banner input[type=text]::placeholder { color: var(--text3); }
+.config-banner input[type=text]:focus { outline: none; border-color: var(--accent2); }
+.btn {
+  background: var(--bg3);
+  border: 0.5px solid var(--border2);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn:hover { background: var(--bg2); border-color: var(--accent); color: var(--accent); }
+.btn.primary { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+.btn.primary:hover { background: #4a5de0; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--text3); }
+.status-dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.status-dot.err { background: var(--red); box-shadow: 0 0 6px var(--red); }
+.status-dot.loading { background: var(--accent); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* Main layout */
+.main-layout { display: grid; grid-template-columns: 1fr 220px; gap: 1rem; align-items: start; }
+@media (max-width: 900px) { .main-layout { grid-template-columns: 1fr; } }
+
+/* Sidebar */
+.sidebar { display: flex; flex-direction: column; gap: 10px; }
+.panel {
+  background: var(--bg2);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+.panel-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--accent);
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+/* Legend */
+.legend-grid { display: flex; flex-direction: column; gap: 5px; }
+.legend-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text2); }
+.legend-sq {
+  width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 7px;
+}
+
+/* Players panel */
+.player-input-row { display: flex; gap: 6px; margin-bottom: 8px; }
+.player-input-row input {
+  flex: 1;
+  background: var(--bg3);
+  border: 0.5px solid var(--border2);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 5px 8px;
+  font-size: 11px;
+  font-family: 'DM Sans', sans-serif;
+  min-width: 0;
+}
+.player-input-row input:focus { outline: none; border-color: var(--accent2); }
+.player-scroll { max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.player-scroll::-webkit-scrollbar { width: 4px; }
+.player-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+.player-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 8px;
+  background: var(--bg3);
+  border-radius: 6px;
+  font-size: 11px;
+  border: 0.5px solid var(--border);
+}
+.player-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.player-name-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.player-pos { font-size: 10px; color: var(--text3); white-space: nowrap; }
+.player-remove { color: var(--text3); cursor: pointer; font-size: 11px; padding: 0 2px; }
+.player-remove:hover { color: var(--red); }
+.badge-count { font-size: 10px; color: var(--accent); }
+
+/* Board */
+.board-wrap { overflow-x: auto; }
+#board {
+  display: grid;
+  gap: 2px;
+  width: fit-content;
+}
+
+.sq {
+  position: relative;
+  border-radius: 4px;
+  font-size: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: center;
+  cursor: pointer;
+  padding: 3px 2px 2px;
+  border: 0.5px solid rgba(255,255,255,0.06);
+  transition: transform 0.1s, border-color 0.15s;
+  overflow: hidden;
+  min-height: 52px;
+  width: 68px;
+}
+.sq:hover { transform: scale(1.08); z-index: 20; border-color: rgba(255,255,255,0.3); }
+.sq .sq-num { font-size: 7px; color: rgba(255,255,255,0.25); position: absolute; top: 2px; left: 3px; font-family: 'DM Sans', sans-serif; }
+.sq .sq-icon { font-size: 13px; line-height: 1; margin-top: 2px; }
+.sq .sq-label { font-size: 7px; color: rgba(255,255,255,0.7); line-height: 1.2; margin-top: 2px; max-width: 100%; word-break: break-word; }
+.sq .sq-players { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 2px; }
+.sq .sq-players span { width: 6px; height: 6px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.4); display: inline-block; }
+.sq .sq-count { font-size: 7px; background: rgba(0,0,0,0.5); border-radius: 10px; padding: 1px 4px; color: #fff; margin-top: 1px; }
+
+.sq.normal    { background: var(--sq-normal); }
+.sq.center    { background: var(--sq-center); border-color: rgba(155,89,182,0.4); }
+.sq.gym       { background: var(--sq-gym); border-color: rgba(59,76,202,0.4); }
+.sq.elite     { background: var(--sq-elite); border-color: rgba(204,0,0,0.4); }
+.sq.prize     { background: var(--sq-prize); border-color: rgba(255,203,5,0.4); }
+.sq.bonus-jump  { background: var(--sq-bonus-jump); border-color: rgba(46,204,113,0.4); }
+.sq.penalty-jump{ background: var(--sq-penalty-jump); border-color: rgba(231,76,60,0.4); }
+.sq.bonus-small { background: var(--sq-bonus-small); border-color: rgba(26,188,156,0.3); }
+.sq.penalty-small{ background: var(--sq-penalty-small); border-color: rgba(230,126,34,0.3); }
+.sq.flavor    { background: var(--sq-flavor); border-color: rgba(155,89,182,0.25); }
+.sq.start     { background: var(--sq-start); border-color: rgba(46,204,113,0.5); }
+.sq.finish    { background: var(--sq-finish); border-color: rgba(233,30,140,0.5); }
+
+/* Tooltip */
+#tooltip {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  background: var(--bg2);
+  border: 0.5px solid var(--border2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--text);
+  max-width: 220px;
+  pointer-events: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+#tooltip strong { color: var(--accent); display: block; margin-bottom: 4px; font-size: 11px; }
+#tooltip em { color: var(--teal); font-style: normal; font-size: 11px; }
+#tooltip .tt-players { margin-top: 6px; padding-top: 6px; border-top: 0.5px solid var(--border); font-size: 11px; color: var(--text2); }
+#tooltip .tt-players div { display: flex; align-items: center; gap: 5px; padding: 2px 0; }
+
+/* Modal */
+#modal-bg {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+}
+#modal-bg.open { display: flex; }
+#modal {
+  background: var(--bg2);
+  border: 0.5px solid var(--border2);
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-width: 360px;
+  width: 92%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+#modal h3 {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--accent);
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+#modal p { font-size: 13px; color: var(--text2); margin-bottom: 6px; line-height: 1.5; }
+#modal .modal-badge { display: inline-block; background: var(--accent2); color: #fff; font-size: 11px; padding: 3px 10px; border-radius: 20px; margin-bottom: 8px; }
+#modal .player-list { margin-top: 10px; }
+#modal .player-list-title { font-size: 11px; color: var(--text3); margin-bottom: 5px; }
+#modal .player-list-row { display: flex; align-items: center; gap: 7px; font-size: 12px; padding: 4px 0; border-bottom: 0.5px solid var(--border); }
+#modal .modal-close { margin-top: 14px; width: 100%; }
+
+/* Sheets guide */
+.sheets-guide {
+  background: var(--bg2);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-top: 1rem;
+}
+.sheets-guide h2 {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: var(--accent);
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+}
+.guide-section { margin-bottom: 14px; }
+.guide-section h3 { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.guide-section p { font-size: 12px; color: var(--text2); line-height: 1.7; margin-bottom: 4px; }
+.guide-section ul { font-size: 12px; color: var(--text2); line-height: 1.8; padding-left: 1.2rem; }
+code {
+  font-family: 'Courier New', monospace;
+  background: var(--bg3);
+  border: 0.5px solid var(--border2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--teal);
+}
+.guide-table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 8px 0; }
+.guide-table th { text-align: left; padding: 5px 8px; background: var(--bg3); color: var(--accent); font-weight: 500; border-bottom: 0.5px solid var(--border2); }
+.guide-table td { padding: 5px 8px; color: var(--text2); border-bottom: 0.5px solid var(--border); vertical-align: top; }
+.guide-table tr:last-child td { border-bottom: none; }
+.guide-table code { font-size: 10px; }
+
+/* Day commit panel */
+.commit-panel {
+  background: linear-gradient(135deg, rgba(59,76,202,0.15), rgba(255,203,5,0.05));
+  border: 0.5px solid rgba(59,76,202,0.4);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.commit-panel .day-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.commit-score-row { display: flex; gap: 5px; margin-bottom: 5px; align-items: center; font-size: 11px; }
+.commit-score-row input {
+  width: 60px;
+  background: var(--bg3);
+  border: 0.5px solid var(--border2);
+  border-radius: 5px;
+  color: var(--text);
+  padding: 4px 6px;
+  font-size: 11px;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+}
+.commit-score-row input:focus { outline: none; border-color: var(--accent); }
+.commit-score-row .pname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text2); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="header">
+    <h1>Pokemon Board Game</h1>
+    <p>Daily score competition — catch rare Pokemon, earn badges, reach the Elite 4</p>
+  </div>
+
+  <!-- Config banner -->
+  <div class="config-banner">
+    <div class="status-dot" id="status-dot"></div>
+    <span id="status-text">Not connected to Google Sheets</span>
+    <input type="text" id="sheet-id-input" placeholder="Paste your Google Sheet ID here..." />
+    <button class="btn primary" onclick="connectSheet()">Connect Sheet</button>
+    <button class="btn" onclick="manualRefresh()">Refresh board</button>
+    <button class="btn" onclick="toggleGuide()">Sheets setup guide</button>
+  </div>
+
+  <div class="main-layout">
+    <!-- Board -->
+    <div>
+      <div class="board-wrap"><div id="board"></div></div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+
+      <!-- Demo / manual day commit -->
+      <div class="commit-panel" id="commit-panel">
+        <div class="day-label">Day commit (demo)</div>
+        <div id="score-rows"></div>
+        <button class="btn primary" style="width:100%;margin-top:6px;font-size:11px" onclick="commitDay()">Commit day scores</button>
+      </div>
+
+      <!-- Players -->
+      <div class="panel">
+        <div class="panel-title">Players</div>
+        <div class="player-input-row">
+          <input type="text" id="player-name" placeholder="Player name..." maxlength="30" />
+          <button class="btn" onclick="addPlayer()" style="padding:5px 10px;font-size:11px">+</button>
+        </div>
+        <div class="player-scroll" id="player-list-ui"></div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px;text-align:center" id="player-count-label">0 players</div>
+      </div>
+
+      <!-- Legend -->
+      <div class="panel">
+        <div class="panel-title">Legend</div>
+        <div class="legend-grid">
+          <div class="legend-item"><div class="legend-sq" style="background:var(--sq-start);border:0.5px solid rgba(46,204,113,0.5)">🏁</div>Start</div>
+          <div class="legend-item"><div class="legend-sq" style="background:var(--sq-center);border:0.5px solid rgba(155,89,182,0.4)">🏥</div>Pokemon Center</div>
+          <div class="legend-item"><div class="legend-sq" style="background:var(--sq-gym);border:0.5px solid rgba(59,76,202,0.4)">🏅</div>Gym (badge)</div>
+          <div class="legend-item"><div class="legend-sq" style="background:var(--sq-elite);border:0.5px solid rgba(204,0,0,0.4)">🏆</div>Elite 4 / Plateau</div>
+          <div class="legend-item"><div class="legend-sq" style="background:var(--sq-prize);border:0.5px solid rgba(255,203,5,0.4)">🎁</div>Prize square</div>
+          <div class="legend-item"><div class="legend-sq" style="background:var(--sq-bonus-jump);border:0.5px solid rgba(46,204,113,0.4)">⬆</div>Jump forward</div>
+          <div class="legend-item"><div class="legend-sq" style="background:var(--sq-penalty-jump);border:0.5px solid rgba(231,76,60,0.4)">⬇</div>Jump back (gym)</div>
+          <div class="legend-item"><div class="legend-sq" style="background:var(--sq-bonus-small);border:0.5px solid rgba(26,188,156,0.3)">+</div>+1 to +5</div>
+          <div class="legend-item"><div class="legend-sq" style="background:var(--sq-penalty-small);border:0.5px solid rgba(230,126,34,0.3)">-</div>-1 to -5</div>
+          <div class="legend-item"><div class="legend-sq" style="background:var(--sq-flavor);border:0.5px solid rgba(155,89,182,0.25)">💬</div>Story event</div>
+          <div class="legend-item"><div class="legend-sq" style="background:var(--sq-finish);border:0.5px solid rgba(233,30,140,0.5)">🌟</div>Finish</div>
+        </div>
+      </div>
+
+      <!-- Badge leaderboard -->
+      <div class="panel" id="badge-panel" style="display:none">
+        <div class="panel-title">Badge leaders</div>
+        <div id="badge-list" style="font-size:11px;display:flex;flex-direction:column;gap:4px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sheets Guide -->
+  <div class="sheets-guide" id="sheets-guide" style="display:none">
+    <h2>Google Sheets Setup Guide</h2>
+
+    <div class="guide-section">
+      <h3>Overview</h3>
+      <p>The board game reads from three tabs in your Google Sheet: <strong>Players</strong>, <strong>BoardConfig</strong>, and <strong>FlavorText</strong>. The sheet must be published publicly (File → Share → Publish to web → CSV). The web app reads it on every page refresh, so any changes you make in the sheet will appear after refresh.</p>
+    </div>
+
+    <div class="guide-section">
+      <h3>Step 1 — Publish your Sheet</h3>
+      <ul>
+        <li>Open your Google Sheet</li>
+        <li>Go to <strong>File → Share → Publish to web</strong></li>
+        <li>Set format to <strong>CSV</strong>, publish the entire document</li>
+        <li>Copy the Sheet ID from the URL: <code>docs.google.com/spreadsheets/d/<strong>SHEET_ID</strong>/edit</code></li>
+        <li>Paste the Sheet ID into the connection box at the top of this page</li>
+      </ul>
+    </div>
+
+    <div class="guide-section">
+      <h3>Step 2 — Players tab (Sheet name: <code>Players</code>)</h3>
+      <p>Row 1 is the header. Add one player per row below. The app auto-detects however many rows exist — no player limit.</p>
+      <table class="guide-table">
+        <tr><th>Column A</th><th>Column B</th><th>Column C</th><th>Column D</th><th>Column E</th><th>Column F+</th></tr>
+        <tr>
+          <td><strong>PlayerName</strong><br>Player's display name</td>
+          <td><strong>CommitDay</strong><br>Checkbox. When checked + committed, today's score is applied</td>
+          <td><strong>TodayScore</strong><br>Enter today's raw score here each day</td>
+          <td><strong>MovesToday</strong><br><code>=IF(B2=TRUE,C2,0)</code></td>
+          <td><strong>TotalPosition</strong><br>Running total. Update this formula each day:<br><code>=MIN(E2+D2, 252)</code></td>
+          <td><strong>Day1, Day2...</strong><br>Historical scores. Copy today's score here each day for records</td>
+        </tr>
+      </table>
+      <p>To commit a day: enter scores in Column C, check the boxes in Column B, then refresh the web app. After recording, uncheck all boxes and clear Column C for the next day.</p>
+    </div>
+
+    <div class="guide-section">
+      <h3>Step 3 — BoardConfig tab (Sheet name: <code>BoardConfig</code>)</h3>
+      <p>Row 1 is the header. Each row defines one special square. Normal squares (no special properties) do not need a row. To move a bonus or penalty square, just change its <strong>SquareNumber</strong>.</p>
+      <table class="guide-table">
+        <tr><th>Col A<br>SquareNumber</th><th>Col B<br>Type</th><th>Col C<br>Label</th><th>Col D<br>Icon</th><th>Col E<br>JumpTo</th><th>Col F<br>MoveAmount</th><th>Col G<br>Description</th></tr>
+        <tr><td>0</td><td>start</td><td>Start</td><td>🏁</td><td></td><td></td><td>The journey begins!</td></tr>
+        <tr><td>15</td><td>gym</td><td>Pewter City Gym</td><td>🏅</td><td></td><td></td><td>Boulder Badge earned!</td></tr>
+        <tr><td>34</td><td>prize</td><td>10 Quick Balls</td><td>🎁</td><td></td><td></td><td>Bonus prize!</td></tr>
+        <tr><td>20</td><td>bonus-jump</td><td>→ Sq 34</td><td>⬆</td><td>34</td><td></td><td>Jump to square 34!</td></tr>
+        <tr><td>40</td><td>penalty-jump</td><td>→ Prev Gym</td><td>⬇</td><td>15</td><td></td><td>Sent back to Pewter!</td></tr>
+        <tr><td>12</td><td>bonus-small</td><td>+3</td><td>+</td><td></td><td>3</td><td>Move forward 3!</td></tr>
+        <tr><td>17</td><td>penalty-small</td><td>-2</td><td>-</td><td></td><td>-2</td><td>Move back 2!</td></tr>
+        <tr><td>125</td><td>center</td><td>Indigo Plateau</td><td>🏥</td><td></td><td></td><td>Rest and recover!</td></tr>
+        <tr><td>252</td><td>finish</td><td>Johto Elite 4</td><td>🌟</td><td></td><td></td><td>You reached the end!</td></tr>
+      </table>
+      <p><strong>Valid types:</strong> <code>start</code>, <code>finish</code>, <code>center</code>, <code>gym</code>, <code>elite</code>, <code>prize</code>, <code>bonus-jump</code>, <code>penalty-jump</code>, <code>bonus-small</code>, <code>penalty-small</code>, <code>flavor</code></p>
+      <p>For <code>bonus-jump</code> and <code>penalty-jump</code>: set <strong>JumpTo</strong> to the destination square number.</p>
+      <p>For <code>bonus-small</code> and <code>penalty-small</code>: set <strong>MoveAmount</strong> (positive = forward, negative = back).</p>
+      <p>Gyms are tracked for badge counting — the player with the most gym landings wins the badge prize.</p>
+    </div>
+
+    <div class="guide-section">
+      <h3>Step 4 — FlavorText tab (Sheet name: <code>FlavorText</code>)</h3>
+      <p>Row 1 is the header. Add story text to any square that isn't already a special square. These display on hover and in the click modal.</p>
+      <table class="guide-table">
+        <tr><th>Column A — SquareNumber</th><th>Column B — FlavorText</th></tr>
+        <tr><td>5</td><td>Professor Oak waves you off on your adventure!</td></tr>
+        <tr><td>22</td><td>A wild Pidgey blocks your path...</td></tr>
+        <tr><td>50</td><td>You spot a Snorlax sleeping on the road.</td></tr>
+      </table>
+    </div>
+
+    <div class="guide-section">
+      <h3>Step 5 — Connect and refresh</h3>
+      <ul>
+        <li>Paste your Sheet ID into the box at the top of the page and click <strong>Connect Sheet</strong></li>
+        <li>The board reloads all config (squares, players, flavor text) on every page refresh</li>
+        <li>To move a bonus/penalty square: update its row in <strong>BoardConfig</strong>, then refresh the web app</li>
+        <li>To add players: add rows to the <strong>Players</strong> tab — no limit on player count</li>
+        <li>Player positions are read from <strong>Column E (TotalPosition)</strong> in the Players tab</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip"></div>
+
+<!-- Modal -->
+<div id="modal-bg" onclick="closeModalBg(event)">
+  <div id="modal">
+    <h3 id="modal-title"></h3>
+    <div id="modal-badge-wrap"></div>
+    <p id="modal-desc"></p>
+    <div class="player-list" id="modal-players"></div>
+    <button class="btn modal-close" onclick="document.getElementById('modal-bg').classList.remove('open')">Close</button>
+  </div>
+</div>
+
+<script>
+// ─── Constants ───────────────────────────────────────────────────────────────
+const TOTAL = 252;
+const COLS = 18;
+const PLAYER_COLORS = [
+  '#2ecc71','#3b4cca','#e91e8c','#e67e22','#9b59b6','#1abc9c',
+  '#cc0000','#f39c12','#27ae60','#2980b9','#8e44ad','#16a085',
+  '#d35400','#c0392b','#7f8c8d','#2c3e50','#e74c3c','#1abc9c',
+  '#f1c40f','#e67e22','#3498db','#9b59b6','#2ecc71','#e91e8c',
+  '#1a237e','#ff6f00','#00695c','#880e4f','#4a148c','#006064'
+];
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let squareData = {};      // Built from BoardConfig + FlavorText
+let players = [];         // { name, color, position, badges }
+let sheetId = localStorage.getItem('pokemonSheetId') || '';
+let connected = false;
+
+// ─── Default board config (used when no Sheet connected) ──────────────────
+const DEFAULT_BOARD = [
+  // Start / finish
+  {sq:0,   type:'start',        label:'Start',                    icon:'🏁', desc:'The journey begins!'},
+  {sq:252, type:'finish',       label:'Johto Elite 4',            icon:'🌟', desc:'You reached the end!'},
+  // Pokemon Centers
+  {sq:125, type:'center',       label:'Indigo Plateau',           icon:'🏥', desc:'Rest and recover! Kanto complete.'},
+  {sq:250, type:'center',       label:'Pokemon Center',           icon:'🏥', desc:'Rest and recover!'},
+  // Elite 4
+  {sq:126, type:'elite',        label:'Kanto Elite 4',            icon:'🏆', desc:'Face the Kanto Elite 4!'},
+  {sq:251, type:'elite',        label:'Indigo Plateau',           icon:'🏆', desc:'The Johto Indigo Plateau!'},
+  // Kanto Gyms
+  {sq:14,  type:'gym', label:'Pewter City Gym',    icon:'🏅', desc:'Boulder Badge', badge:'Boulder Badge'},
+  {sq:28,  type:'gym', label:'Cerulean City Gym',  icon:'🏅', desc:'Cascade Badge', badge:'Cascade Badge'},
+  {sq:42,  type:'gym', label:'Vermilion City Gym', icon:'🏅', desc:'Thunder Badge', badge:'Thunder Badge'},
+  {sq:56,  type:'gym', label:'Celadon City Gym',   icon:'🏅', desc:'Rainbow Badge', badge:'Rainbow Badge'},
+  {sq:70,  type:'gym', label:'Fuchsia City Gym',   icon:'🏅', desc:'Soul Badge',    badge:'Soul Badge'},
+  {sq:84,  type:'gym', label:'Saffron City Gym',   icon:'🏅', desc:'Marsh Badge',   badge:'Marsh Badge'},
+  {sq:98,  type:'gym', label:'Cinnabar Island Gym',icon:'🏅', desc:'Volcano Badge', badge:'Volcano Badge'},
+  {sq:112, type:'gym', label:'Viridian City Gym',  icon:'🏅', desc:'Earth Badge',   badge:'Earth Badge'},
+  // Johto Gyms
+  {sq:140, type:'gym', label:'Violet City Gym',    icon:'🏅', desc:'Zephyr Badge',  badge:'Zephyr Badge'},
+  {sq:153, type:'gym', label:'Azalea Town Gym',    icon:'🏅', desc:'Hive Badge',    badge:'Hive Badge'},
+  {sq:166, type:'gym', label:'Goldenrod City Gym', icon:'🏅', desc:'Plain Badge',   badge:'Plain Badge'},
+  {sq:179, type:'gym', label:'Ecruteak City Gym',  icon:'🏅', desc:'Fog Badge',     badge:'Fog Badge'},
+  {sq:192, type:'gym', label:'Cianwood City Gym',  icon:'🏅', desc:'Storm Badge',   badge:'Storm Badge'},
+  {sq:205, type:'gym', label:'Olivine City Gym',   icon:'🏅', desc:'Mineral Badge', badge:'Mineral Badge'},
+  {sq:218, type:'gym', label:'Mahogany Town Gym',  icon:'🏅', desc:'Glacier Badge', badge:'Glacier Badge'},
+  {sq:231, type:'gym', label:'Blackthorn City Gym',icon:'🏅', desc:'Rising Badge',  badge:'Rising Badge'},
+  // Prize squares
+  {sq:34,  type:'prize',        label:'10 Quick Balls',           icon:'🎁', desc:'Bonus prize! You found 10 Quick Balls!'},
+  {sq:69,  type:'prize',        label:'5 Mystery Boxes',          icon:'🎁', desc:'Bonus prize! You found 5 Mystery Boxes!'},
+  {sq:180, type:'prize',        label:'1 Ability Capsule',        icon:'🎁', desc:'Bonus prize! You found an Ability Capsule!'},
+  // Bonus jumps (to prize squares)
+  {sq:20,  type:'bonus-jump',   label:'→ Sq 34',                  icon:'⬆', jumpTo:34,  desc:'Jump forward to square 34!'},
+  {sq:55,  type:'bonus-jump',   label:'→ Sq 69',                  icon:'⬆', jumpTo:69,  desc:'Jump forward to square 69!'},
+  {sq:160, type:'bonus-jump',   label:'→ Sq 180',                 icon:'⬆', jumpTo:180, desc:'Jump forward to square 180!'},
+  // Penalty jumps (to prev gym)
+  {sq:40,  type:'penalty-jump', label:'→ Pewter (14)',            icon:'⬇', jumpTo:14,  desc:'Sent back to Pewter City Gym!'},
+  {sq:85,  type:'penalty-jump', label:'→ Fuchsia (70)',           icon:'⬇', jumpTo:70,  desc:'Sent back to Fuchsia City Gym!'},
+  {sq:130, type:'penalty-jump', label:'→ Cinnabar (98)',          icon:'⬇', jumpTo:98,  desc:'Sent back to Cinnabar Island Gym!'},
+  {sq:195, type:'penalty-jump', label:'→ Violet (140)',           icon:'⬇', jumpTo:140, desc:'Sent back to Violet City Gym!'},
+  {sq:230, type:'penalty-jump', label:'→ Mahogany (218)',         icon:'⬇', jumpTo:218, desc:'Sent back to Mahogany Town Gym!'},
+  // Small bonuses
+  {sq:8,   type:'bonus-small',  label:'+2', icon:'+', move:2,  desc:'Move forward 2!'},
+  {sq:22,  type:'bonus-small',  label:'+3', icon:'+', move:3,  desc:'Move forward 3!'},
+  {sq:48,  type:'bonus-small',  label:'+1', icon:'+', move:1,  desc:'Move forward 1!'},
+  {sq:62,  type:'bonus-small',  label:'+4', icon:'+', move:4,  desc:'Move forward 4!'},
+  {sq:78,  type:'bonus-small',  label:'+2', icon:'+', move:2,  desc:'Move forward 2!'},
+  {sq:100, type:'bonus-small',  label:'+3', icon:'+', move:3,  desc:'Move forward 3!'},
+  {sq:115, type:'bonus-small',  label:'+5', icon:'+', move:5,  desc:'Move forward 5!'},
+  {sq:135, type:'bonus-small',  label:'+2', icon:'+', move:2,  desc:'Move forward 2!'},
+  {sq:150, type:'bonus-small',  label:'+4', icon:'+', move:4,  desc:'Move forward 4!'},
+  {sq:168, type:'bonus-small',  label:'+1', icon:'+', move:1,  desc:'Move forward 1!'},
+  {sq:190, type:'bonus-small',  label:'+3', icon:'+', move:3,  desc:'Move forward 3!'},
+  {sq:210, type:'bonus-small',  label:'+2', icon:'+', move:2,  desc:'Move forward 2!'},
+  {sq:235, type:'bonus-small',  label:'+5', icon:'+', move:5,  desc:'Move forward 5!'},
+  {sq:248, type:'bonus-small',  label:'+3', icon:'+', move:3,  desc:'Move forward 3!'},
+  // Small penalties
+  {sq:12,  type:'penalty-small',label:'-2', icon:'-', move:-2, desc:'Move back 2!'},
+  {sq:30,  type:'penalty-small',label:'-1', icon:'-', move:-1, desc:'Move back 1!'},
+  {sq:52,  type:'penalty-small',label:'-3', icon:'-', move:-3, desc:'Move back 3!'},
+  {sq:73,  type:'penalty-small',label:'-2', icon:'-', move:-2, desc:'Move back 2!'},
+  {sq:90,  type:'penalty-small',label:'-4', icon:'-', move:-4, desc:'Move back 4!'},
+  {sq:108, type:'penalty-small',label:'-1', icon:'-', move:-1, desc:'Move back 1!'},
+  {sq:118, type:'penalty-small',label:'-2', icon:'-', move:-2, desc:'Move back 2!'},
+  {sq:145, type:'penalty-small',label:'-3', icon:'-', move:-3, desc:'Move back 3!'},
+  {sq:162, type:'penalty-small',label:'-2', icon:'-', move:-2, desc:'Move back 2!'},
+  {sq:175, type:'penalty-small',label:'-5', icon:'-', move:-5, desc:'Move back 5!'},
+  {sq:200, type:'penalty-small',label:'-1', icon:'-', move:-1, desc:'Move back 1!'},
+  {sq:220, type:'penalty-small',label:'-3', icon:'-', move:-3, desc:'Move back 3!'},
+  {sq:240, type:'penalty-small',label:'-4', icon:'-', move:-4, desc:'Move back 4!'},
+  {sq:245, type:'penalty-small',label:'-2', icon:'-', move:-2, desc:'Move back 2!'},
+  // Flavor text
+  {sq:5,   type:'flavor', label:'Story',    icon:'💬', desc:'Professor Oak waves you off on your adventure!'},
+  {sq:15,  type:'flavor', label:'Story',    icon:'💬', desc:'Wild Rattata appeared! You ran.'},
+  {sq:25,  type:'flavor', label:'Story',    icon:'💬', desc:'You healed at a roadside fountain.'},
+  {sq:38,  type:'flavor', label:'Story',    icon:'💬', desc:'A trainer challenges you!'},
+  {sq:60,  type:'flavor', label:'Story',    icon:'💬', desc:'Caught a rare Abra!'},
+  {sq:80,  type:'flavor', label:'Story',    icon:'💬', desc:'Team Rocket spotted nearby...'},
+  {sq:95,  type:'flavor', label:'Story',    icon:'💬', desc:'You found a hidden TM!'},
+  {sq:112, type:'flavor', label:'Story',    icon:'💬', desc:'The fog is thick here.'},
+  {sq:138, type:'flavor', label:'Story',    icon:'💬', desc:'Johto calls to you...'},
+  {sq:155, type:'flavor', label:'Story',    icon:'💬', desc:'A breeder offers you an Egg.'},
+  {sq:172, type:'flavor', label:'Story',    icon:'💬', desc:'Lugia soars overhead!'},
+  {sq:208, type:'flavor', label:'Story',    icon:'💬', desc:"Ho-Oh's feather gleams."},
+  {sq:225, type:'flavor', label:'Story',    icon:'💬', desc:'You sense the Elite 4 near...'},
+  {sq:242, type:'flavor', label:'Story',    icon:'💬', desc:'One last push to glory!'},
+];
+
+// ─── CSV Parser ───────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const rows = [];
+  const lines = text.trim().split('\n');
+  for (const line of lines) {
+    const cells = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQ = !inQ; continue; }
+      if (ch === ',' && !inQ) { cells.push(cur.trim()); cur = ''; continue; }
+      cur += ch;
+    }
+    cells.push(cur.trim());
+    rows.push(cells);
+  }
+  return rows;
+}
+
+// ─── Sheet fetching ───────────────────────────────────────────────────────────
+async function fetchSheetTab(sheetId, tabName) {
+  const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch tab: ${tabName}`);
+  return parseCSV(await res.text());
+}
+
+async function loadFromSheet() {
+  setStatus('loading', 'Loading from Google Sheets...');
+  try {
+    const [boardRows, playerRows, flavorRows] = await Promise.all([
+      fetchSheetTab(sheetId, 'BoardConfig'),
+      fetchSheetTab(sheetId, 'Players'),
+      fetchSheetTab(sheetId, 'FlavorText').catch(() => [])
+    ]);
+
+    // Parse BoardConfig (skip header row 0)
+    squareData = {};
+    for (let i = 1; i < boardRows.length; i++) {
+      const [sqNum, type, label, icon, jumpTo, moveAmt, desc, badge] = boardRows[i];
+      if (!sqNum || isNaN(parseInt(sqNum))) continue;
+      const sq = parseInt(sqNum);
+      squareData[sq] = {
+        type: type || 'normal',
+        label: label || '',
+        icon: icon || '',
+        jumpTo: jumpTo ? parseInt(jumpTo) : undefined,
+        move: moveAmt ? parseInt(moveAmt) : undefined,
+        desc: desc || '',
+        badge: badge || undefined
+      };
+    }
+
+    // Parse FlavorText
+    for (let i = 1; i < flavorRows.length; i++) {
+      const [sqNum, flavorText] = flavorRows[i];
+      if (!sqNum || isNaN(parseInt(sqNum))) continue;
+      const sq = parseInt(sqNum);
+      if (!squareData[sq]) {
+        squareData[sq] = { type: 'flavor', label: 'Story', icon: '💬', desc: flavorText || '' };
+      }
+    }
+
+    // Parse Players (skip header row 0)
+    const existingByName = {};
+    players.forEach(p => existingByName[p.name] = p);
+    players = [];
+    for (let i = 1; i < playerRows.length; i++) {
+      const [name, , , , totalPos] = playerRows[i];
+      if (!name || name.toLowerCase() === 'playername') continue;
+      const pos = Math.min(Math.max(parseInt(totalPos) || 0, 0), TOTAL);
+      const color = existingByName[name]?.color || PLAYER_COLORS[players.length % PLAYER_COLORS.length];
+      const badges = countBadges(pos);
+      players.push({ name, color, position: pos, badges });
+    }
+
+    connected = true;
+    setStatus('ok', `Connected — ${players.length} players loaded`);
+    renderAll();
+  } catch (e) {
+    setStatus('err', 'Connection failed — check Sheet ID and sharing');
+    console.error(e);
+  }
+}
+
+function countBadges(pos) {
+  // Count gym squares at or below current position
+  return Object.entries(squareData).filter(([sq, d]) => d.type === 'gym' && parseInt(sq) <= pos).length;
+}
+
+// ─── Status ──────────────────────────────────────────────────────────────────
+function setStatus(state, msg) {
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-text');
+  dot.className = 'status-dot ' + state;
+  txt.textContent = msg;
+}
+
+// ─── Connect / refresh ───────────────────────────────────────────────────────
+function connectSheet() {
+  const val = document.getElementById('sheet-id-input').value.trim();
+  if (!val) { setStatus('err', 'Please enter a Sheet ID'); return; }
+  // Accept full URL or just ID
+  const match = val.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  sheetId = match ? match[1] : val;
+  localStorage.setItem('pokemonSheetId', sheetId);
+  loadFromSheet();
+}
+
+function manualRefresh() {
+  if (sheetId) loadFromSheet();
+  else { renderAll(); setStatus('', 'No sheet connected — showing demo mode'); }
+}
+
+function toggleGuide() {
+  const el = document.getElementById('sheets-guide');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// ─── Default board init ───────────────────────────────────────────────────────
+function initDefaultBoard() {
+  squareData = {};
+  DEFAULT_BOARD.forEach(d => {
+    squareData[d.sq] = {
+      type: d.type,
+      label: d.label,
+      icon: d.icon,
+      jumpTo: d.jumpTo,
+      move: d.move,
+      desc: d.desc,
+      badge: d.badge
+    };
+  });
+}
+
+// ─── Player management ───────────────────────────────────────────────────────
+function addPlayer() {
+  const input = document.getElementById('player-name');
+  const name = input.value.trim();
+  if (!name) return;
+  if (players.find(p => p.name === name)) { input.value = ''; return; }
+  const color = PLAYER_COLORS[players.length % PLAYER_COLORS.length];
+  players.push({ name, color, position: 0, badges: 0 });
+  input.value = '';
+  renderAll();
+}
+
+function removePlayer(name) {
+  players = players.filter(p => p.name !== name);
+  renderAll();
+}
+
+document.getElementById('player-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addPlayer();
+});
+
+// ─── Day commit (demo mode) ──────────────────────────────────────────────────
+function renderScoreRows() {
+  const el = document.getElementById('score-rows');
+  el.innerHTML = players.map((p, i) =>
+    `<div class="commit-score-row">
+      <span style="width:8px;height:8px;border-radius:50%;background:${p.color};display:inline-block;flex-shrink:0"></span>
+      <span class="pname">${p.name}</span>
+      <input type="number" id="score-${i}" placeholder="0" min="0" />
+    </div>`
+  ).join('');
+}
+
+function applySpecialSquares(pos) {
+  const d = squareData[pos];
+  if (!d) return pos;
+  if (d.jumpTo !== undefined) return d.jumpTo;
+  if (d.move !== undefined) return Math.max(0, Math.min(TOTAL, pos + d.move));
+  return pos;
+}
+
+function commitDay() {
+  players.forEach((p, i) => {
+    const input = document.getElementById(`score-${i}`);
+    const score = Math.max(0, parseInt(input?.value) || 0);
+    let newPos = Math.min(p.position + score, TOTAL);
+    newPos = applySpecialSquares(newPos);
+    newPos = Math.max(0, Math.min(TOTAL, newPos));
+    p.position = newPos;
+    p.badges = countBadges(newPos);
+    if (input) input.value = '';
+  });
+  renderAll();
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function getPlayersOnSquare(sq) {
+  return players.filter(p => p.position === sq);
+}
+
+function renderPlayerSidebar() {
+  const ul = document.getElementById('player-list-ui');
+  const sorted = [...players].sort((a, b) => b.position - a.position);
+  ul.innerHTML = sorted.map(p =>
+    `<div class="player-row">
+      <div class="player-dot" style="background:${p.color}"></div>
+      <span class="player-name-text">${p.name}</span>
+      <span class="player-pos">Sq ${p.position}</span>
+      <span class="badge-count">🏅${p.badges}</span>
+      <span class="player-remove" onclick="removePlayer('${p.name.replace(/'/g,"\\'")}')">✕</span>
+    </div>`
+  ).join('');
+  document.getElementById('player-count-label').textContent =
+    players.length === 0 ? '0 players' : `${players.length} player${players.length !== 1 ? 's' : ''}`;
+
+  // Badge leaderboard
+  const badgePanel = document.getElementById('badge-panel');
+  const badgeList = document.getElementById('badge-list');
+  if (players.length > 0) {
+    badgePanel.style.display = 'block';
+    const top = [...players].sort((a,b) => b.badges - a.badges).slice(0, 8);
+    badgeList.innerHTML = top.map((p, i) =>
+      `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:0.5px solid var(--border)">
+        <span style="font-size:10px;color:var(--text3);width:14px">${i+1}</span>
+        <span style="width:8px;height:8px;border-radius:50%;background:${p.color};display:inline-block"></span>
+        <span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span>
+        <span style="font-size:11px;color:var(--accent)">🏅 ${p.badges}</span>
+      </div>`
+    ).join('');
+  } else {
+    badgePanel.style.display = 'none';
+  }
+
+  renderScoreRows();
+}
+
+function renderBoard() {
+  const board = document.getElementById('board');
+  const wrapW = document.getElementById('board').parentElement.offsetWidth || 900;
+  const sqW = Math.max(52, Math.min(72, Math.floor((wrapW - COLS * 2) / COLS)));
+  board.style.gridTemplateColumns = `repeat(${COLS}, ${sqW}px)`;
+
+  const totalRows = Math.ceil((TOTAL + 1) / COLS);
+  const cells = [];
+
+  for (let r = 0; r < totalRows; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const idx = r % 2 === 0 ? r * COLS + c : r * COLS + (COLS - 1 - c);
+      cells.push(idx <= TOTAL ? idx : -1);
+    }
+  }
+
+  board.innerHTML = cells.map(idx => {
+    if (idx === -1) return `<div style="background:transparent;border:none;min-height:${sqW < 60 ? 48 : 54}px"></div>`;
+    const d = squareData[idx];
+    const type = d ? d.type : 'normal';
+    const icon = d ? (d.icon || '') : '';
+    const labelRaw = d ? (d.label || '') : '';
+    const label = labelRaw.substring(0, 16);
+    const onSq = getPlayersOnSquare(idx);
+    const dots = onSq.slice(0, 5).map(p =>
+      `<span style="background:${p.color}" title="${p.name}"></span>`
+    ).join('');
+    const countHtml = onSq.length > 5 ? `<div class="sq-count">+${onSq.length - 5}</div>` : (onSq.length > 0 ? `<div class="sq-count">${onSq.length}</div>` : '');
+
+    return `<div class="sq ${type}" data-sq="${idx}"
+      style="min-height:${sqW < 60 ? 48 : 54}px;width:${sqW}px"
+      onmouseenter="showTip(event,${idx})"
+      onmouseleave="hideTip()"
+      onclick="openModal(${idx})">
+      <span class="sq-num">${idx}</span>
+      <span class="sq-icon">${icon}</span>
+      <span class="sq-label">${label}</span>
+      ${onSq.length > 0 ? `<div class="sq-players">${dots}</div>${countHtml}` : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderAll() {
+  renderPlayerSidebar();
+  renderBoard();
+}
+
+// ─── Tooltip ──────────────────────────────────────────────────────────────────
+function showTip(e, idx) {
+  const d = squareData[idx];
+  const onSq = getPlayersOnSquare(idx);
+  const tt = document.getElementById('tooltip');
+  let html = `<strong>Square ${idx}${d && d.label ? ' — ' + d.label : ''}</strong>`;
+  if (d && d.badge) html += `<em>${d.badge}</em>`;
+  if (d && d.desc) html += `<div style="color:var(--text2);margin-top:3px;font-size:11px">${d.desc}</div>`;
+  if (d && d.jumpTo !== undefined) html += `<div style="margin-top:3px;font-size:11px;color:var(--teal)">Jumps to square ${d.jumpTo}</div>`;
+  if (d && d.move !== undefined) html += `<div style="margin-top:3px;font-size:11px;color:${d.move>0?'var(--green)':'var(--red)'}">Move ${d.move > 0 ? '+' : ''}${d.move} spaces</div>`;
+  if (onSq.length > 0) {
+    html += `<div class="tt-players"><div style="font-size:10px;color:var(--text3);margin-bottom:3px">${onSq.length} player(s) here</div>`;
+    html += onSq.map(p => `<div><span style="width:7px;height:7px;border-radius:50%;background:${p.color};display:inline-block"></span> ${p.name}</div>`).join('');
+    html += `</div>`;
+  }
+  tt.innerHTML = html;
+  tt.style.display = 'block';
+  const x = Math.min(e.clientX + 14, window.innerWidth - 240);
+  tt.style.left = x + 'px';
+  tt.style.top = (e.clientY - 10) + 'px';
+}
+function hideTip() { document.getElementById('tooltip').style.display = 'none'; }
+
+// ─── Modal ────────────────────────────────────────────────────────────────────
+function openModal(idx) {
+  const d = squareData[idx] || {};
+  const onSq = getPlayersOnSquare(idx);
+  document.getElementById('modal-title').textContent =
+    `Square ${idx}${d.label ? ' — ' + d.label : ''}`;
+  const bw = document.getElementById('modal-badge-wrap');
+  bw.innerHTML = d.badge ? `<span class="modal-badge">🏅 ${d.badge}</span>` : '';
+  let desc = d.desc || '';
+  if (d.jumpTo !== undefined) desc += ` (Jumps to square ${d.jumpTo})`;
+  if (d.move !== undefined) desc += ` (Move ${d.move > 0 ? '+' : ''}${d.move} spaces)`;
+  document.getElementById('modal-desc').textContent = desc || 'Standard square.';
+  const pl = document.getElementById('modal-players');
+  if (onSq.length > 0) {
+    pl.innerHTML = `<div class="player-list-title">Players on this square (${onSq.length})</div>` +
+      onSq.map(p =>
+        `<div class="player-list-row">
+          <span style="width:9px;height:9px;border-radius:50%;background:${p.color};display:inline-block"></span>
+          ${p.name}
+          <span style="margin-left:auto;font-size:11px;color:var(--text3)">Sq ${p.position} · 🏅${p.badges}</span>
+        </div>`
+      ).join('');
+  } else {
+    pl.innerHTML = `<div style="font-size:11px;color:var(--text3);padding-top:6px">No players on this square.</div>`;
+  }
+  document.getElementById('modal-bg').classList.add('open');
+}
+function closeModalBg(e) {
+  if (e.target === document.getElementById('modal-bg'))
+    document.getElementById('modal-bg').classList.remove('open');
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+initDefaultBoard();
+
+if (sheetId) {
+  document.getElementById('sheet-id-input').value = sheetId;
+  loadFromSheet();
+} else {
+  setStatus('', 'Demo mode — connect a Google Sheet to load live data');
+  renderAll();
+}
+
+window.addEventListener('resize', renderBoard);
+</script>
+</body>
+</html>
