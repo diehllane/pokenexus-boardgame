@@ -419,22 +419,31 @@ function daysBetween(d1, d2) {
 }
 
 function updateEventMeta() {
-  const counter  = document.getElementById('day-counter');
+  const counter   = document.getElementById('day-counter');
   const countdown = document.getElementById('countdown');
   const now = new Date();
 
+  const fmtDate = (iso) => {
+    const [y, m, d] = iso.split('-');
+    return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
   if (CFG.EventStartDate) {
-    const start = new Date(CFG.EventStartDate + 'T00:00:00');
+    const [y, m, d] = CFG.EventStartDate.split('-');
+    const start = new Date(y, m - 1, d);
     const day = daysBetween(start, now) + 1;
     if (day >= 1) counter.innerHTML = `<strong>Day ${day}</strong> of event`;
-    else counter.innerHTML = `<strong>Starts ${CFG.EventStartDate}</strong>`;
+    else counter.innerHTML = `<strong>Starts ${fmtDate(CFG.EventStartDate)}</strong>`;
   }
+
   if (CFG.EventEndDate) {
-    const end = new Date(CFG.EventEndDate + 'T23:59:59');
+    const [y, m, d] = CFG.EventEndDate.split('-');
+    const end = new Date(y, m - 1, d);
     const remaining = daysBetween(now, end);
-    if (remaining > 0) countdown.textContent = `${remaining} days remaining`;
-    else if (remaining === 0) countdown.textContent = 'Last day!';
-    else countdown.textContent = 'Event ended';
+    const endLabel = fmtDate(CFG.EventEndDate);
+    if (remaining > 0) countdown.innerHTML = `Ends ${endLabel} &nbsp;·&nbsp; <strong>${remaining} day${remaining !== 1 ? 's' : ''} left</strong>`;
+    else if (remaining === 0) countdown.innerHTML = `Ends ${endLabel} &nbsp;·&nbsp; <strong>Last day!</strong>`;
+    else countdown.innerHTML = `Ended ${endLabel}`;
   }
 }
 
