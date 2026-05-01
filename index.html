@@ -680,7 +680,7 @@ async function loadFromSheet() {
       fetchSheetTab(sheetId, 'FlavorText').catch(() => [])
     ]);
 
-    // Parse BoardConfig (skip header row 0)
+    // Parse BoardConfig (skip header row 0) — only wipe squareData after successful fetch
     squareData = {};
     for (let i = 1; i < boardRows.length; i++) {
       const [sqNum, type, label, icon, jumpTo, moveAmt, desc, badge] = boardRows[i];
@@ -726,6 +726,9 @@ async function loadFromSheet() {
   } catch (e) {
     setStatus('err', `Connection failed — ${e.message}`);
     console.error(e);
+    // Restore default board so the page isn't blank after a failed connection
+    if (Object.keys(squareData).length === 0) initDefaultBoard();
+    renderAll();
   }
 }
 
