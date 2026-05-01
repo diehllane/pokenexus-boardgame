@@ -656,9 +656,19 @@ function parseCSV(text) {
 // ─── Sheet fetching ───────────────────────────────────────────────────────────
 async function fetchSheetTab(sheetId, tabName) {
   const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch tab: ${tabName}`);
-  return parseCSV(await res.text());
+  let res;
+  try {
+    res = await fetch(url);
+  } catch (networkErr) {
+    throw new Error(`Network error fetching ${tabName}: ${networkErr.message}`);
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status} fetching tab: ${tabName}`);
+  const text = await res.text();
+  // gviz returns an HTML page (not CSV) when the sheet isn't published or ID is wrong
+  if (text.trim().startsWith('<')) {
+    throw new Error(`Tab "${tabName}" returned HTML — check that the sheet is published as CSV and the Sheet ID is correct`);
+  }
+  return parseCSV(text);
 }
 
 async function loadFromSheet() {
@@ -714,7 +724,7 @@ async function loadFromSheet() {
     setStatus('ok', `Connected — ${players.length} players loaded`);
     renderAll();
   } catch (e) {
-    setStatus('err', 'Connection failed — check Sheet ID and sharing');
+    setStatus('err', `Connection failed — ${e.message}`);
     console.error(e);
   }
 }
