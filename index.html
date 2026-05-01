@@ -288,22 +288,6 @@ body::before {
 #modal .player-list-title { font-size: 11px; color: var(--text3); margin-bottom: 5px; }
 #modal .player-list-row { display: flex; align-items: center; gap: 7px; font-size: 12px; padding: 4px 0; border-bottom: 0.5px solid var(--border); }
 #modal .modal-close { margin-top: 14px; width: 100%; }
-
-/* Sheets guide */
-.sheets-guide {
-  background: var(--bg2);
-  border: 0.5px solid var(--border);
-  border-radius: 10px;
-  padding: 1rem 1.25rem;
-  margin-top: 1rem;
-}
-.sheets-guide h2 {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 8px;
-  color: var(--accent);
-  margin-bottom: 12px;
-  letter-spacing: 1px;
-}
 .guide-section { margin-bottom: 14px; }
 .guide-section h3 { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
 .guide-section p { font-size: 12px; color: var(--text2); line-height: 1.7; margin-bottom: 4px; }
@@ -324,33 +308,6 @@ code {
 .guide-table code { font-size: 10px; }
 
 /* Day commit panel */
-.commit-panel {
-  background: linear-gradient(135deg, rgba(59,76,202,0.15), rgba(255,203,5,0.05));
-  border: 0.5px solid rgba(59,76,202,0.4);
-  border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 10px;
-}
-.commit-panel .day-label {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 7px;
-  color: var(--accent);
-  margin-bottom: 8px;
-}
-.commit-score-row { display: flex; gap: 5px; margin-bottom: 5px; align-items: center; font-size: 11px; }
-.commit-score-row input {
-  width: 60px;
-  background: var(--bg3);
-  border: 0.5px solid var(--border2);
-  border-radius: 5px;
-  color: var(--text);
-  padding: 4px 6px;
-  font-size: 11px;
-  text-align: center;
-  font-family: 'DM Sans', sans-serif;
-}
-.commit-score-row input:focus { outline: none; border-color: var(--accent); }
-.commit-score-row .pname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text2); }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -370,10 +327,7 @@ code {
   <div class="config-banner">
     <div class="status-dot" id="status-dot"></div>
     <span id="status-text">Not connected to Google Sheets</span>
-    <input type="text" id="sheet-id-input" placeholder="Paste your Google Sheet ID here..." />
-    <button class="btn primary" onclick="connectSheet()">Connect Sheet</button>
     <button class="btn" onclick="manualRefresh()">Refresh board</button>
-    <button class="btn" onclick="toggleGuide()">Sheets setup guide</button>
   </div>
 
   <div class="main-layout">
@@ -385,20 +339,9 @@ code {
     <!-- Sidebar -->
     <div class="sidebar">
 
-      <!-- Demo / manual day commit -->
-      <div class="commit-panel" id="commit-panel">
-        <div class="day-label">Day commit (demo)</div>
-        <div id="score-rows"></div>
-        <button class="btn primary" style="width:100%;margin-top:6px;font-size:11px" onclick="commitDay()">Commit day scores</button>
-      </div>
-
       <!-- Players -->
       <div class="panel">
         <div class="panel-title">Players</div>
-        <div class="player-input-row">
-          <input type="text" id="player-name" placeholder="Player name..." maxlength="30" />
-          <button class="btn" onclick="addPlayer()" style="padding:5px 10px;font-size:11px">+</button>
-        </div>
         <div class="player-scroll" id="player-list-ui"></div>
         <div style="font-size:10px;color:var(--text3);margin-top:6px;text-align:center" id="player-count-label">0 players</div>
       </div>
@@ -429,86 +372,7 @@ code {
     </div>
   </div>
 
-  <!-- Sheets Guide -->
-  <div class="sheets-guide" id="sheets-guide" style="display:none">
-    <h2>Google Sheets Setup Guide</h2>
 
-    <div class="guide-section">
-      <h3>Overview</h3>
-      <p>The board game reads from three tabs in your Google Sheet: <strong>Players</strong>, <strong>BoardConfig</strong>, and <strong>FlavorText</strong>. The sheet must be published publicly (File → Share → Publish to web → CSV). The web app reads it on every page refresh, so any changes you make in the sheet will appear after refresh.</p>
-    </div>
-
-    <div class="guide-section">
-      <h3>Step 1 — Publish your Sheet</h3>
-      <ul>
-        <li>Open your Google Sheet</li>
-        <li>Go to <strong>File → Share → Publish to web</strong></li>
-        <li>Set format to <strong>CSV</strong>, publish the entire document</li>
-        <li>Copy the Sheet ID from the URL: <code>docs.google.com/spreadsheets/d/<strong>SHEET_ID</strong>/edit</code></li>
-        <li>Paste the Sheet ID into the connection box at the top of this page</li>
-      </ul>
-    </div>
-
-    <div class="guide-section">
-      <h3>Step 2 — Players tab (Sheet name: <code>Players</code>)</h3>
-      <p>Row 1 is the header. Add one player per row below. The app auto-detects however many rows exist — no player limit.</p>
-      <table class="guide-table">
-        <tr><th>Column A</th><th>Column B</th><th>Column C</th><th>Column D</th><th>Column E</th><th>Column F+</th></tr>
-        <tr>
-          <td><strong>PlayerName</strong><br>Player's display name</td>
-          <td><strong>CommitDay</strong><br>Checkbox. When checked + committed, today's score is applied</td>
-          <td><strong>TodayScore</strong><br>Enter today's raw score here each day</td>
-          <td><strong>MovesToday</strong><br><code>=IF(B2=TRUE,C2,0)</code></td>
-          <td><strong>TotalPosition</strong><br>Running total. Update this formula each day:<br><code>=MIN(E2+D2, 252)</code></td>
-          <td><strong>Day1, Day2...</strong><br>Historical scores. Copy today's score here each day for records</td>
-        </tr>
-      </table>
-      <p>To commit a day: enter scores in Column C, check the boxes in Column B, then refresh the web app. After recording, uncheck all boxes and clear Column C for the next day.</p>
-    </div>
-
-    <div class="guide-section">
-      <h3>Step 3 — BoardConfig tab (Sheet name: <code>BoardConfig</code>)</h3>
-      <p>Row 1 is the header. Each row defines one special square. Normal squares (no special properties) do not need a row. To move a bonus or penalty square, just change its <strong>SquareNumber</strong>.</p>
-      <table class="guide-table">
-        <tr><th>Col A<br>SquareNumber</th><th>Col B<br>Type</th><th>Col C<br>Label</th><th>Col D<br>Icon</th><th>Col E<br>JumpTo</th><th>Col F<br>MoveAmount</th><th>Col G<br>Description</th></tr>
-        <tr><td>0</td><td>start</td><td>Start</td><td>🏁</td><td></td><td></td><td>The journey begins!</td></tr>
-        <tr><td>15</td><td>gym</td><td>Pewter City Gym</td><td>🏅</td><td></td><td></td><td>Boulder Badge earned!</td></tr>
-        <tr><td>34</td><td>prize</td><td>10 Quick Balls</td><td>🎁</td><td></td><td></td><td>Bonus prize!</td></tr>
-        <tr><td>20</td><td>bonus-jump</td><td>→ Sq 34</td><td>⬆</td><td>34</td><td></td><td>Jump to square 34!</td></tr>
-        <tr><td>40</td><td>penalty-jump</td><td>→ Prev Gym</td><td>⬇</td><td>15</td><td></td><td>Sent back to Pewter!</td></tr>
-        <tr><td>12</td><td>bonus-small</td><td>+3</td><td>+</td><td></td><td>3</td><td>Move forward 3!</td></tr>
-        <tr><td>17</td><td>penalty-small</td><td>-2</td><td>-</td><td></td><td>-2</td><td>Move back 2!</td></tr>
-        <tr><td>125</td><td>center</td><td>Indigo Plateau</td><td>🏥</td><td></td><td></td><td>Rest and recover!</td></tr>
-        <tr><td>252</td><td>finish</td><td>Johto Elite 4</td><td>🌟</td><td></td><td></td><td>You reached the end!</td></tr>
-      </table>
-      <p><strong>Valid types:</strong> <code>start</code>, <code>finish</code>, <code>center</code>, <code>gym</code>, <code>elite</code>, <code>prize</code>, <code>bonus-jump</code>, <code>penalty-jump</code>, <code>bonus-small</code>, <code>penalty-small</code>, <code>flavor</code></p>
-      <p>For <code>bonus-jump</code> and <code>penalty-jump</code>: set <strong>JumpTo</strong> to the destination square number.</p>
-      <p>For <code>bonus-small</code> and <code>penalty-small</code>: set <strong>MoveAmount</strong> (positive = forward, negative = back).</p>
-      <p>Gyms are tracked for badge counting — the player with the most gym landings wins the badge prize.</p>
-    </div>
-
-    <div class="guide-section">
-      <h3>Step 4 — FlavorText tab (Sheet name: <code>FlavorText</code>)</h3>
-      <p>Row 1 is the header. Add story text to any square that isn't already a special square. These display on hover and in the click modal.</p>
-      <table class="guide-table">
-        <tr><th>Column A — SquareNumber</th><th>Column B — FlavorText</th></tr>
-        <tr><td>5</td><td>Professor Oak waves you off on your adventure!</td></tr>
-        <tr><td>22</td><td>A wild Pidgey blocks your path...</td></tr>
-        <tr><td>50</td><td>You spot a Snorlax sleeping on the road.</td></tr>
-      </table>
-    </div>
-
-    <div class="guide-section">
-      <h3>Step 5 — Connect and refresh</h3>
-      <ul>
-        <li>Paste your Sheet ID into the box at the top of the page and click <strong>Connect Sheet</strong></li>
-        <li>The board reloads all config (squares, players, flavor text) on every page refresh</li>
-        <li>To move a bonus/penalty square: update its row in <strong>BoardConfig</strong>, then refresh the web app</li>
-        <li>To add players: add rows to the <strong>Players</strong> tab — no limit on player count</li>
-        <li>Player positions are read from <strong>Column E (TotalPosition)</strong> in the Players tab</li>
-      </ul>
-    </div>
-  </div>
 
 </div>
 
@@ -541,7 +405,7 @@ const PLAYER_COLORS = [
 // ─── State ───────────────────────────────────────────────────────────────────
 let squareData = {};      // Built from BoardConfig + FlavorText
 let players = [];         // { name, color, position, badges }
-let sheetId = localStorage.getItem('pokemonSheetId') || '';
+let sheetId = '';
 let connected = false;
 
 // ─── Default board config (used when no Sheet connected) ──────────────────
@@ -748,25 +612,10 @@ function setStatus(state, msg) {
 }
 
 // ─── Connect / refresh ───────────────────────────────────────────────────────
-function connectSheet() {
-  const val = document.getElementById('sheet-id-input').value.trim();
-  if (!val) { setStatus('err', 'Please enter a Sheet ID'); return; }
-  // Accept full URL or just ID
-  const match = val.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  sheetId = match ? match[1] : val;
-  localStorage.setItem('pokemonSheetId', sheetId);
+function manualRefresh() {
   loadFromSheet();
 }
 
-function manualRefresh() {
-  if (sheetId) loadFromSheet();
-  else { renderAll(); setStatus('', 'No sheet connected — showing demo mode'); }
-}
-
-function toggleGuide() {
-  const el = document.getElementById('sheets-guide');
-  el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
 
 // ─── Default board init ───────────────────────────────────────────────────────
 function initDefaultBoard() {
@@ -785,58 +634,12 @@ function initDefaultBoard() {
 }
 
 // ─── Player management ───────────────────────────────────────────────────────
-function addPlayer() {
-  const input = document.getElementById('player-name');
-  const name = input.value.trim();
-  if (!name) return;
-  if (players.find(p => p.name === name)) { input.value = ''; return; }
-  const color = PLAYER_COLORS[players.length % PLAYER_COLORS.length];
-  players.push({ name, color, position: 0, badges: 0 });
-  input.value = '';
-  renderAll();
-}
-
-function removePlayer(name) {
-  players = players.filter(p => p.name !== name);
-  renderAll();
-}
-
-document.getElementById('player-name').addEventListener('keydown', e => {
-  if (e.key === 'Enter') addPlayer();
-});
-
-// ─── Day commit (demo mode) ──────────────────────────────────────────────────
-function renderScoreRows() {
-  const el = document.getElementById('score-rows');
-  el.innerHTML = players.map((p, i) =>
-    `<div class="commit-score-row">
-      <span style="width:8px;height:8px;border-radius:50%;background:${p.color};display:inline-block;flex-shrink:0"></span>
-      <span class="pname">${p.name}</span>
-      <input type="number" id="score-${i}" placeholder="0" min="0" />
-    </div>`
-  ).join('');
-}
-
 function applySpecialSquares(pos) {
   const d = squareData[pos];
   if (!d) return pos;
   if (d.jumpTo !== undefined) return d.jumpTo;
   if (d.move !== undefined) return Math.max(0, Math.min(TOTAL, pos + d.move));
   return pos;
-}
-
-function commitDay() {
-  players.forEach((p, i) => {
-    const input = document.getElementById(`score-${i}`);
-    const score = Math.max(0, parseInt(input?.value) || 0);
-    let newPos = Math.min(p.position + score, TOTAL);
-    newPos = applySpecialSquares(newPos);
-    newPos = Math.max(0, Math.min(TOTAL, newPos));
-    p.position = newPos;
-    p.badges = countBadges(newPos);
-    if (input) input.value = '';
-  });
-  renderAll();
 }
 
 // ─── Render ───────────────────────────────────────────────────────────────────
@@ -853,7 +656,7 @@ function renderPlayerSidebar() {
       <span class="player-name-text">${p.name}</span>
       <span class="player-pos">Sq ${p.position}</span>
       <span class="badge-count">🏅${p.badges}</span>
-      <span class="player-remove" onclick="removePlayer('${p.name.replace(/'/g,"\\'")}')">✕</span>
+
     </div>`
   ).join('');
   document.getElementById('player-count-label').textContent =
@@ -877,7 +680,6 @@ function renderPlayerSidebar() {
     badgePanel.style.display = 'none';
   }
 
-  renderScoreRows();
 }
 
 function renderBoard() {
@@ -985,13 +787,7 @@ function closeModalBg(e) {
 // ─── Init ────────────────────────────────────────────────────────────────────
 initDefaultBoard();
 
-if (sheetId) {
-  document.getElementById('sheet-id-input').value = sheetId;
-  loadFromSheet();
-} else {
-  setStatus('', 'Demo mode — connect a Google Sheet to load live data');
-  renderAll();
-}
+loadFromSheet();
 
 window.addEventListener('resize', renderBoard);
 </script>
