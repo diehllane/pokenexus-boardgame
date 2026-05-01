@@ -234,6 +234,21 @@ body::before {
 .sq.start     { background: var(--sq-start); border-color: rgba(46,204,113,0.5); }
 .sq.finish    { background: var(--sq-finish); border-color: rgba(233,30,140,0.5); }
 
+/* Direction arrows */
+.sq-arrow {
+  position: absolute;
+  font-size: 8px;
+  color: rgba(255,255,255,0.35);
+  line-height: 1;
+  pointer-events: none;
+  z-index: 5;
+}
+.sq-arrow.right          { right: 2px;  top: 50%; transform: translateY(-50%); }
+.sq-arrow.left           { left: 2px;   top: 50%; transform: translateY(-50%); }
+.sq-arrow.down           { bottom: 2px; left: 50%; transform: translateX(-50%); }
+.sq-arrow.turn-right-down { bottom: 2px; right: 2px; font-size: 11px; }
+.sq-arrow.turn-left-down  { bottom: 2px; left: 2px;  font-size: 11px; }
+
 /* Tooltip */
 #tooltip {
   display: none;
@@ -711,6 +726,30 @@ function renderBoard() {
     ).join('');
     const countHtml = onSq.length > 5 ? `<div class="sq-count">+${onSq.length - 5}</div>` : (onSq.length > 0 ? `<div class="sq-count">${onSq.length}</div>` : '');
 
+    // Determine direction arrow for this square
+    let arrowHtml = '';
+    if (idx < TOTAL) {
+      const row = Math.floor(idx / COLS);
+      const isEvenRow = row % 2 === 0;
+      // Calculate grid col position (snake pattern)
+      const colInRow = idx % COLS;
+      const gridCol = isEvenRow ? colInRow : COLS - 1 - colInRow;
+      const isRightEdge = gridCol === COLS - 1;
+      const isLeftEdge = gridCol === 0;
+
+      if (isEvenRow && isRightEdge) {
+        // Going right, about to turn down-left
+        arrowHtml = `<span class="sq-arrow turn-right-down">↷</span>`;
+      } else if (!isEvenRow && isLeftEdge) {
+        // Going left, about to turn down-right
+        arrowHtml = `<span class="sq-arrow turn-left-down">↶</span>`;
+      } else if (isEvenRow) {
+        arrowHtml = `<span class="sq-arrow right">▶</span>`;
+      } else {
+        arrowHtml = `<span class="sq-arrow left">◀</span>`;
+      }
+    }
+
     return `<div class="sq ${type}" data-sq="${idx}"
       style="min-height:${sqW < 60 ? 48 : 54}px;width:${sqW}px"
       onmouseenter="showTip(event,${idx})"
@@ -719,6 +758,7 @@ function renderBoard() {
       <span class="sq-num">${idx}</span>
       <span class="sq-icon">${icon}</span>
       <span class="sq-label">${label}</span>
+      ${arrowHtml}
       ${onSq.length > 0 ? `<div class="sq-players">${dots}</div>${countHtml}` : ''}
     </div>`;
   }).join('');
