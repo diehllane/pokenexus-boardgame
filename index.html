@@ -256,6 +256,114 @@
     font-size: 0.82rem;
     text-align: center;
   }
+
+  /* ── BELOW-BOARD PANELS ── */
+  #below-board {
+    display: none;
+    gap: 16px;
+    padding: 16px;
+    flex-wrap: wrap;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+  }
+
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    flex: 1;
+    min-width: 280px;
+  }
+  .panel h2 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--theme-light);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Badge count table */
+  #badge-board-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+  }
+  #badge-board-table th {
+    text-align: left;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 4px 8px 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  #badge-board-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid rgba(48,54,61,0.5);
+    vertical-align: middle;
+  }
+  #badge-board-table tr:last-child td { border-bottom: none; }
+  #badge-board-table tr:hover td { background: var(--bg3); }
+  .bb-rank { color: var(--text-muted); font-size: 0.75rem; width: 28px; }
+  .bb-name { font-weight: 700; }
+  .bb-count {
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--theme-light);
+    text-align: center;
+    width: 48px;
+  }
+  .bb-badges { display: flex; flex-wrap: wrap; gap: 3px; }
+  .bb-bar-wrap { width: 120px; }
+  .bb-bar-bg {
+    background: var(--bg3);
+    border-radius: 4px;
+    height: 6px;
+    overflow: hidden;
+  }
+  .bb-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--theme), var(--theme-light));
+    transition: width 0.4s ease;
+  }
+
+  /* Prize tracker */
+  #prize-list { display: flex; flex-direction: column; gap: 8px; }
+  .prize-entry {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-left: 3px solid #f9a825;
+    border-radius: 6px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.8rem;
+  }
+  .prize-entry .pe-icon { font-size: 1.2rem; flex-shrink: 0; }
+  .prize-entry .pe-info { flex: 1; }
+  .prize-entry .pe-square { font-size: 0.68rem; color: var(--text-muted); margin-top: 1px; }
+  .prize-entry .pe-players { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .prize-entry .pe-player-chip {
+    border-radius: 8px;
+    padding: 1px 8px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #fff;
+  }
+  .prize-entry .pe-prize { font-weight: 700; font-size: 0.82rem; }
+  #prize-empty {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-style: italic;
+    padding: 8px 0;
+  }
 </style>
 </head>
 <body>
@@ -311,6 +419,32 @@
   <div class="leg"><div class="leg-dot" style="background:#c62828;border:1px dashed #ef9a9a"></div>Penalty Jump</div>
   <div class="leg"><div class="leg-dot" style="background:#00695c"></div>+Bonus</div>
   <div class="leg"><div class="leg-dot" style="background:#ad1457"></div>−Penalty</div>
+</div>
+
+<!-- BELOW-BOARD PANELS -->
+<div id="below-board" style="display:none">
+  <!-- Badge Count Board -->
+  <div class="panel" id="badge-board-panel">
+    <h2>🏅 Badge Count Board</h2>
+    <table id="badge-board-table">
+      <thead>
+        <tr>
+          <th class="bb-rank">#</th>
+          <th>Player</th>
+          <th style="text-align:center">Badges</th>
+          <th>Progress</th>
+          <th>Earned</th>
+        </tr>
+      </thead>
+      <tbody id="badge-board-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Prize Tracker -->
+  <div class="panel" id="prize-panel">
+    <h2>🎁 Prizes Owed</h2>
+    <div id="prize-list"><div id="prize-empty">No players have landed on prize squares yet.</div></div>
+  </div>
 </div>
 
 <!-- POPUP -->
@@ -418,32 +552,55 @@ function daysBetween(d1, d2) {
   return Math.floor(ms / 86400000);
 }
 
+// Safely parse a date value from Google Sheets.
+// Sheets may return a JS Date object (if cell is Date-formatted) OR a "YYYY-MM-DD" string.
+function parseDateFromSheet(val) {
+  if (!val) return null;
+  // JS Date object (Sheets returns these for date-formatted cells)
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? null : new Date(val.getFullYear(), val.getMonth(), val.getDate());
+  }
+  // Numeric timestamp (rare but possible via JSON serialization)
+  if (typeof val === 'number') {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+  // String — expect YYYY-MM-DD
+  const s = String(val).trim();
+  const parts = s.split('-');
+  if (parts.length !== 3) return null;
+  const [y, m, d] = parts.map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+}
+
 function updateEventMeta() {
   const counter   = document.getElementById('day-counter');
   const countdown = document.getElementById('countdown');
   const now = new Date();
+  now.setHours(0, 0, 0, 0);
 
-  const fmtDate = (iso) => {
-    const [y, m, d] = iso.split('-');
-    return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+  const fmtDate = (d) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 
-  if (CFG.EventStartDate) {
-    const [y, m, d] = CFG.EventStartDate.split('-');
-    const start = new Date(y, m - 1, d);
+  const start = parseDateFromSheet(CFG.EventStartDate);
+  const end   = parseDateFromSheet(CFG.EventEndDate);
+
+  if (start) {
     const day = daysBetween(start, now) + 1;
     if (day >= 1) counter.innerHTML = `<strong>Day ${day}</strong> of event`;
-    else counter.innerHTML = `<strong>Starts ${fmtDate(CFG.EventStartDate)}</strong>`;
+    else counter.innerHTML = `<strong>Starts ${fmtDate(start)}</strong>`;
+  } else {
+    counter.innerHTML = '';
   }
 
-  if (CFG.EventEndDate) {
-    const [y, m, d] = CFG.EventEndDate.split('-');
-    const end = new Date(y, m - 1, d);
+  if (end) {
     const remaining = daysBetween(now, end);
-    const endLabel = fmtDate(CFG.EventEndDate);
+    const endLabel = fmtDate(end);
     if (remaining > 0) countdown.innerHTML = `Ends ${endLabel} &nbsp;·&nbsp; <strong>${remaining} day${remaining !== 1 ? 's' : ''} left</strong>`;
     else if (remaining === 0) countdown.innerHTML = `Ends ${endLabel} &nbsp;·&nbsp; <strong>Last day!</strong>`;
     else countdown.innerHTML = `Ended ${endLabel}`;
+  } else {
+    countdown.innerHTML = '';
   }
 }
 
@@ -489,9 +646,12 @@ async function loadData() {
     parseData(data);
     renderBoard();
     renderSidebar();
+    renderBadgeBoard();
+    renderPrizeTracker();
     updateHeader();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('board').style.display = 'grid';
+    document.getElementById('below-board').style.display = 'flex';
     setStatus('Updated ' + new Date().toLocaleTimeString());
   } catch(e) {
     setStatus('Error loading data');
@@ -773,6 +933,99 @@ function closePopup() { document.getElementById('popup').style.display = 'none';
 document.addEventListener('click', e => {
   if (!e.target.closest('.sq') && !e.target.closest('#popup')) closePopup();
 });
+
+// ─────────────────────────────────────────────
+// BADGE COUNT BOARD
+// ─────────────────────────────────────────────
+function renderBadgeBoard() {
+  const tbody = document.getElementById('badge-board-body');
+  tbody.innerHTML = '';
+
+  if (!CFG.BadgeBonusEnabled) {
+    document.getElementById('badge-board-panel').style.display = 'none';
+    return;
+  }
+  document.getElementById('badge-board-panel').style.display = 'block';
+
+  const sorted = [...players].sort((a, b) => b.badges.length - a.badges.length || b.position - a.position);
+  const maxBadges = sorted.length ? sorted[0].badges.length : 0;
+  // Total possible gyms
+  const totalGyms = Object.values(boardConfig).filter(c => c.type === 'gym').length || 1;
+  const medals = ['🥇','🥈','🥉'];
+
+  sorted.forEach((p, i) => {
+    const barPct = maxBadges > 0 ? Math.round((p.badges.length / maxBadges) * 100) : 0;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="bb-rank">${medals[i] || (i + 1)}</td>
+      <td class="bb-name">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:6px;vertical-align:middle"></span>
+        ${p.name}
+      </td>
+      <td class="bb-count">${p.badges.length}<span style="color:var(--text-muted);font-size:0.65rem;font-weight:400"> / ${totalGyms}</span></td>
+      <td class="bb-bar-wrap">
+        <div class="bb-bar-bg"><div class="bb-bar-fill" style="width:${barPct}%"></div></div>
+      </td>
+      <td>
+        <div class="bb-badges">
+          ${p.badges.length ? p.badges.map(b => `<span class="badge-chip">${b}</span>`).join('') : '<span style="color:var(--text-muted);font-size:0.72rem">—</span>'}
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ─────────────────────────────────────────────
+// PRIZE TRACKER
+// ─────────────────────────────────────────────
+function renderPrizeTracker() {
+  const list = document.getElementById('prize-list');
+  list.innerHTML = '';
+
+  // Collect all prize squares from boardConfig
+  const prizeSquares = Object.entries(boardConfig)
+    .filter(([, c]) => c.type === 'prize')
+    .sort(([a], [b]) => parseInt(a) - parseInt(b));
+
+  // Also include bonus-jump targets that land on prize squares (they're the same squares)
+  // Find which players have passed through or landed on each prize square
+  const entries = [];
+  prizeSquares.forEach(([sqStr, conf]) => {
+    const sq = parseInt(sqStr);
+    // A player "has" this prize if their current position is >= the prize square
+    // (they've passed through it at some point during the event).
+    // Since we only have current positions, we use >= sq as the proxy.
+    const winners = players.filter(p => p.position >= sq);
+    entries.push({ sq, conf, winners });
+  });
+
+  if (entries.length === 0 || entries.every(e => e.winners.length === 0)) {
+    list.innerHTML = '<div id="prize-empty">No players have landed on prize squares yet.</div>';
+    return;
+  }
+
+  entries.forEach(({ sq, conf, winners }) => {
+    if (winners.length === 0) return;
+    const div = document.createElement('div');
+    div.className = 'prize-entry';
+    div.innerHTML = `
+      <div class="pe-icon">${conf.icon || '🎁'}</div>
+      <div class="pe-info">
+        <div class="pe-prize">${conf.label || `Prize Square ${sq}`}${conf.description ? ` — ${conf.description}` : ''}</div>
+        <div class="pe-square">Square #${sq}</div>
+        <div class="pe-players">
+          ${winners.map(p => `<span class="pe-player-chip" style="background:${p.color}">${p.name}</span>`).join('')}
+        </div>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+
+  if (list.innerHTML === '') {
+    list.innerHTML = '<div id="prize-empty">No players have landed on prize squares yet.</div>';
+  }
+}
 
 // ─────────────────────────────────────────────
 // BOOT
