@@ -146,6 +146,11 @@
     background-size: cover;
     background-position: center;
   }
+  .sq .player-dot-avatar {
+    width: calc(var(--tile) * 0.28);
+    height: calc(var(--tile) * 0.28);
+    border: 2px solid rgba(255,255,255,0.6);
+  }
 
   /* Square type colors */
   .sq-start    { background: linear-gradient(135deg,#1b5e20,#2e7d32); border-color: #66bb6a; }
@@ -448,7 +453,7 @@
     <div id="board" style="display:none"></div>
   </div>
   <div id="sidebar" style="display:none">
-    <h2>🏅 Badge Board</h2>
+    <h2>👤 Player List</h2>
     <div id="player-list"></div>
   </div>
 </div>
@@ -790,7 +795,8 @@ function parseData(data) {
 function playerDotHtml(p, sizeStyle) {
   const style = sizeStyle || '';
   if (p.avatarUrl) {
-    return `<div class="player-dot" style="background:${p.color};background-image:url('${p.avatarUrl}');${style}" title="${p.name}"></div>`;
+    // Avatar players get a slightly larger dot so the image is recognisable
+    return `<div class="player-dot player-dot-avatar" style="background:${p.color};background-image:url('${p.avatarUrl}');${style}" title="${p.name}"></div>`;
   }
   return `<div class="player-dot" style="background:${p.color};${style}" title="${p.name}">${p.name[0].toUpperCase()}</div>`;
 }
