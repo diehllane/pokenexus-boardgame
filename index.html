@@ -793,7 +793,7 @@ function parseData(data) {
 function playerDotHtml(p, sizeStyle) {
   const style = sizeStyle || '';
   if (p.avatarUrl) {
-    return `<div class="player-dot player-dot-avatar" style="background-color:${p.color};background-image:url('${p.avatarUrl}');background-size:cover;background-position:center;${style}" title="${p.name}"></div>`;
+    return `<div class="player-dot player-dot-avatar" style="background-color:#ffffff;background-image:url('${p.avatarUrl}');background-size:cover;background-position:center;${style}" title="${p.name}"></div>`;
   }
   return `<div class="player-dot" style="background-color:${p.color};${style}" title="${p.name}">${p.name[0].toUpperCase()}</div>`;
 }
