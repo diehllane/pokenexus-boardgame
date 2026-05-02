@@ -127,8 +127,8 @@
     font-size: var(--font-size-tile);
   }
   .sq:hover { transform: scale(1.12); z-index: 10; box-shadow: 0 0 12px var(--theme); border-color: var(--theme-light); }
-  .sq .sq-num { position: absolute; top: 2px; left: 3px; font-size: 8px; opacity: 0.45; font-weight: 600; }
-  .sq .sq-arrow { position: absolute; bottom: 1px; right: 3px; font-size: 7px; opacity: 0.35; }
+  .sq .sq-num { position: absolute; top: 2px; left: 3px; font-size: calc(var(--tile) * 0.13); opacity: 0.45; font-weight: 600; }
+  .sq .sq-arrow { position: absolute; bottom: 1px; right: 3px; font-size: calc(var(--tile) * 0.13); opacity: 0.35; }
   .sq .sq-icon { font-size: calc(var(--tile) * 0.28); line-height: 1; }
   .sq .sq-label { font-size: calc(var(--tile) * 0.11); text-align: center; line-height: 1.1; padding: 0 2px; margin-top: 2px; font-weight: 600; word-break: break-word; max-width: 100%; }
   .sq .sq-players { display: flex; flex-wrap: wrap; gap: 1px; justify-content: center; margin-top: 1px; max-width: calc(var(--tile) - 4px); }
