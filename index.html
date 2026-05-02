@@ -142,6 +142,9 @@
     border: 1px solid rgba(255,255,255,0.3);
     color: #fff;
     flex-shrink: 0;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
   }
 
   /* Square type colors */
@@ -200,6 +203,33 @@
   .player-card .pname { font-weight: 700; font-size: 0.82rem; margin-bottom: 4px; }
   .player-card .ppos  { color: var(--text-muted); margin-bottom: 4px; }
   .player-card .pbadges { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+  .player-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  .player-avatar-fallback {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .player-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
   .badge-chip {
     background: var(--theme);
     border-radius: 10px;
@@ -492,10 +522,10 @@ let CFG = {
   ScoreDivisor:      2,
   ScoreOperation:    'divide',
   ScoreRoundingMode: 'ceil',
+  MinMovesPerDay:    1,
   MaxMovesPerDay:    0,
   ThemeColor:        '#c62828',
-  EventStartDate:    '',
-  EventEndDate:      '',
+  LastCommitTime:    '',
   BadgeBonusEnabled: true,
   ShowBadgeSidebar:  true,
   ShowFlavorText:    true,
@@ -560,64 +590,17 @@ function scoreToMoves(rawScore) {
   else if (CFG.ScoreRoundingMode === 'round') val = Math.round(val);
   else val = Math.ceil(val);
   if (CFG.MaxMovesPerDay > 0) val = Math.min(val, CFG.MaxMovesPerDay);
+  if (CFG.MinMovesPerDay > 0) val = Math.max(val, CFG.MinMovesPerDay);
   return Math.max(0, val);
 }
 
-function daysBetween(d1, d2) {
-  const ms = d2 - d1;
-  return Math.floor(ms / 86400000);
-}
-
-// Safely parse a date value from Google Sheets.
-// Sheets may return a JS Date object (if cell is Date-formatted) OR a "YYYY-MM-DD" string.
-function parseDateFromSheet(val) {
-  if (!val) return null;
-  // JS Date object (Sheets returns these for date-formatted cells)
-  if (val instanceof Date) {
-    return isNaN(val.getTime()) ? null : new Date(val.getFullYear(), val.getMonth(), val.getDate());
-  }
-  // Numeric timestamp (rare but possible via JSON serialization)
-  if (typeof val === 'number') {
-    const d = new Date(val);
-    return isNaN(d.getTime()) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  }
-  // String — expect YYYY-MM-DD
-  const s = String(val).trim();
-  const parts = s.split('-');
-  if (parts.length !== 3) return null;
-  const [y, m, d] = parts.map(Number);
-  if (!y || !m || !d) return null;
-  return new Date(y, m - 1, d);
-}
-
-function updateEventMeta() {
-  const counter   = document.getElementById('day-counter');
-  const countdown = document.getElementById('countdown');
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-
-  const fmtDate = (d) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-
-  const start = parseDateFromSheet(CFG.EventStartDate);
-  const end   = parseDateFromSheet(CFG.EventEndDate);
-
-  if (start) {
-    const day = daysBetween(start, now) + 1;
-    if (day >= 1) counter.innerHTML = `<strong>Day ${day}</strong> of event`;
-    else counter.innerHTML = `<strong>Starts ${fmtDate(start)}</strong>`;
-  } else {
-    counter.innerHTML = '';
-  }
-
-  if (end) {
-    const remaining = daysBetween(now, end);
-    const endLabel = fmtDate(end);
-    if (remaining > 0) countdown.innerHTML = `Ends ${endLabel} &nbsp;·&nbsp; <strong>${remaining} day${remaining !== 1 ? 's' : ''} left</strong>`;
-    else if (remaining === 0) countdown.innerHTML = `Ends ${endLabel} &nbsp;·&nbsp; <strong>Last day!</strong>`;
-    else countdown.innerHTML = `Ended ${endLabel}`;
-  } else {
-    countdown.innerHTML = '';
-  }
+// ─────────────────────────────────────────────
+// LAST COMMITTED — read from BoardConfig LastCommitTime key
+// Written by the Apps Script onEdit trigger whenever G2 is checked.
+// Format expected: any string — displayed as-is in the header.
+// ─────────────────────────────────────────────
+function getLastCommittedDisplay() {
+  return CFG.LastCommitTime || null;
 }
 
 function updateHeader() {
@@ -637,7 +620,13 @@ function updateHeader() {
   }
 
   applyTheme(CFG.ThemeColor || '#c62828');
-  updateEventMeta();
+
+  // Last committed timestamp
+  const lastCommit = getLastCommittedDisplay();
+  document.getElementById('day-counter').innerHTML = lastCommit
+    ? `Last committed: <strong>${lastCommit}</strong>`
+    : '';
+  document.getElementById('countdown').innerHTML = '';
 
   // Tile size: slider override takes priority, then sheet value
   if (tileSliderOverride === null) {
@@ -696,8 +685,8 @@ function parseData(data) {
     GameTitle: 'PokeNexus Board Game', GameSubtitle: '',
     TitleImageURL: '', TrackLength: 252, GridColumns: 18, TileSize: 60,
     ScoreDivisor: 2, ScoreOperation: 'divide', ScoreRoundingMode: 'ceil',
-    MaxMovesPerDay: 0, ThemeColor: '#c62828',
-    EventStartDate: '', EventEndDate: '',
+    MinMovesPerDay: 1, MaxMovesPerDay: 0, ThemeColor: '#c62828',
+    LastCommitTime: '',
     BadgeBonusEnabled: true, ShowBadgeSidebar: true, ShowFlavorText: true,
   };
 
@@ -715,7 +704,7 @@ function parseData(data) {
         const rawVal = row[3]; // may be number, bool, or string from Sheets
         const strVal = str(rawVal);
 
-        const numKeys  = ['TrackLength','GridColumns','TileSize','ScoreDivisor','MaxMovesPerDay'];
+        const numKeys  = ['TrackLength','GridColumns','TileSize','ScoreDivisor','MinMovesPerDay','MaxMovesPerDay'];
         const boolKeys = ['BadgeBonusEnabled','ShowBadgeSidebar','ShowFlavorText'];
 
         if (numKeys.includes(key)) {
@@ -746,10 +735,11 @@ function parseData(data) {
   }
 
   // Validate critical config values — clamp to sane ranges
-  CFG.TrackLength  = Math.max(1,  CFG.TrackLength);
-  CFG.GridColumns  = Math.max(1,  CFG.GridColumns);
-  CFG.TileSize     = Math.max(24, Math.min(200, CFG.TileSize));
-  CFG.ScoreDivisor = CFG.ScoreDivisor || 1;
+  CFG.TrackLength    = Math.max(1,  CFG.TrackLength);
+  CFG.GridColumns    = Math.max(1,  CFG.GridColumns);
+  CFG.TileSize       = Math.max(24, Math.min(200, CFG.TileSize));
+  CFG.ScoreDivisor   = CFG.ScoreDivisor || 1;
+  CFG.MinMovesPerDay = Math.max(0,  CFG.MinMovesPerDay);
 
   // ── FlavorText rows ──
   if (data.flavorText && Array.isArray(data.flavorText)) {
@@ -767,10 +757,12 @@ function parseData(data) {
       const name = str(row[0]);
       if (!name || name.toLowerCase() === 'playername') return;
       const position = Math.min(Math.max(0, parseInt(str(row[3])) || 0), CFG.TrackLength);
+      const avatarUrl = str(row[4]); // Column E = PlayerAvatarURL
       players.push({
         name,
         position,
         color: PLAYER_COLORS[i % PLAYER_COLORS.length],
+        avatarUrl,
         badges: [],
       });
     });
@@ -793,6 +785,14 @@ function parseData(data) {
   console.log('boardConfig keys:', Object.keys(boardConfig).length, 'squares loaded');
   console.log('players:', players.length, 'loaded');
   console.log('flavorText keys:', Object.keys(flavorText).length);
+}
+
+function playerDotHtml(p, sizeStyle) {
+  const style = sizeStyle || '';
+  if (p.avatarUrl) {
+    return `<div class="player-dot" style="background:${p.color};background-image:url('${p.avatarUrl}');${style}" title="${p.name}"></div>`;
+  }
+  return `<div class="player-dot" style="background:${p.color};${style}" title="${p.name}">${p.name[0].toUpperCase()}</div>`;
 }
 
 // ─────────────────────────────────────────────
@@ -856,9 +856,7 @@ function renderBoard() {
     const here = playerPos[sq] || [];
     if (here.length) {
       html += `<div class="sq-players">`;
-      here.forEach(p => {
-        html += `<div class="player-dot" style="background:${p.color}" title="${p.name}">${p.name[0].toUpperCase()}</div>`;
-      });
+      here.forEach(p => { html += playerDotHtml(p); });
       html += `</div>`;
     }
 
@@ -900,9 +898,18 @@ function renderSidebar() {
     const card = document.createElement('div');
     card.className = 'player-card';
     card.style.borderLeft = `3px solid ${p.color}`;
+    const avatarHtml = p.avatarUrl
+      ? `<img class="player-avatar" src="${p.avatarUrl}" alt="${p.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+        + `<div class="player-avatar-fallback" style="background:${p.color};display:none">${p.name[0].toUpperCase()}</div>`
+      : `<div class="player-avatar-fallback" style="background:${p.color}">${p.name[0].toUpperCase()}</div>`;
     card.innerHTML = `
-      <div class="pname">${medals[rank] || '▸'} ${p.name}</div>
-      <div class="ppos">Square ${p.position} / ${CFG.TrackLength} (${pct}%)</div>
+      <div class="player-card-header">
+        ${avatarHtml}
+        <div>
+          <div class="pname">${medals[rank] || '▸'} ${p.name}</div>
+          <div class="ppos">Square ${p.position} / ${CFG.TrackLength} (${pct}%)</div>
+        </div>
+      </div>
       <div>
         <span class="badge-count">🏅 ${p.badges.length} badge${p.badges.length !== 1 ? 's' : ''}</span>
       </div>
@@ -981,13 +988,13 @@ function renderBadgeBoard() {
 
   sorted.forEach((p, i) => {
     const barPct = maxBadges > 0 ? Math.round((p.badges.length / maxBadges) * 100) : 0;
+    const avatarHtml = p.avatarUrl
+      ? `<img src="${p.avatarUrl}" alt="${p.name}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;border:1px solid var(--border);margin-right:6px;vertical-align:middle" onerror="this.style.display='none'">`
+      : `<span style="display:inline-block;width:22px;height:22px;border-radius:50%;background:${p.color};margin-right:6px;vertical-align:middle;text-align:center;line-height:22px;font-size:0.65rem;font-weight:700;color:#fff">${p.name[0].toUpperCase()}</span>`;
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="bb-rank">${medals[i] || (i + 1)}</td>
-      <td class="bb-name">
-        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:6px;vertical-align:middle"></span>
-        ${p.name}
-      </td>
+      <td class="bb-name">${avatarHtml}${p.name}</td>
       <td class="bb-count">${p.badges.length}<span style="color:var(--text-muted);font-size:0.65rem;font-weight:400"> / ${totalGyms}</span></td>
       <td class="bb-bar-wrap">
         <div class="bb-bar-bg"><div class="bb-bar-fill" style="width:${barPct}%"></div></div>
